@@ -30,10 +30,16 @@ type DatabaseSpec struct {
 
 	// Foo is an example field of Database. Edit database_types.go to remove/update
 	//Foo string `json:"foo,omitempty"`
-	DatabaseType    string `json:"database_type,omitempty"`
+	// +kubebuilder:default:="psql"
+	DatabaseType string `json:"database_type,omitempty"`
+	// +kubebuilder:default:="11"
 	DatabaseVersion string `json:"database_version,omitempty"`
 	// +kubebuilder:default:="registry.access.redhat.com/openshift3/postgresql-92-rhel7"
 	Image string `json:"image,omitempty"`
+	// +kubebuilder:validation:Enum=App1;App2;App3
+	EnumField string `json:"enum_field,omitempty"`
+
+	Markdown string `json:"markdown,omitempty""`
 }
 
 // DatabaseStatus defines the observed state of Database
