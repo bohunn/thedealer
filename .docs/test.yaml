@@ -1,10 +1,10 @@
 apiVersion: github.com/v1alpha1
 kind: Database
 metadata:
-  name: databse-sample2
+  name: databse-sample3
 spec:
   markdown: Database markdown
   database_type: psql
   database_version: "12"
   image: psql/base
-  enum_field: App1222
+  enum_field: App1

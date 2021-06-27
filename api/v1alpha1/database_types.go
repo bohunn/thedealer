@@ -39,7 +39,7 @@ type DatabaseSpec struct {
 	// +kubebuilder:validation:Enum=App1;App2;App3
 	EnumField string `json:"enum_field,omitempty"`
 
-	Markdown string `json:"markdown,omitempty""`
+	Markdown string `json:"markdown,omitempty"`
 }
 
 // DatabaseStatus defines the observed state of Database

@@ -60,7 +60,7 @@ type DatabaseReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := log.FromContext(ctx, "Request.Namespace", req.Namespace, "Request.Name", req.Name)
-	reqLogger.Info("Reconciling Presentation")
+	reqLogger.Info("Reconciling Database")
 
 	// Fetch the Database instance
 	instance := &githubcomv1alpha1.Database{}
@@ -85,6 +85,12 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	serviceChanged, err := r.ensureServiceForCr(instance)
+
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	reqLogger.Info("checking if service changed", "serviceChanged", serviceChanged)
 	//cfg, err := config.GetConfig()
 	//if err != nil {
 	//	log.Error(err, "")
@@ -123,6 +129,61 @@ func (r *DatabaseReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+func newServiceForCr(cr *githubcomv1alpha1.Database) *v1.Service {
+	logger := log.Log.WithName("newServiceForCr")
+	logger.Info("Creating a new service")
+	return &v1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Service",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name + "-service",
+			Namespace: cr.Namespace,
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Protocol: v1.ProtocolTCP,
+					Port:     8090,
+					//NodePort: 8090,
+				},
+			},
+			Type: "NodePort",
+		},
+		Status: v1.ServiceStatus{},
+	}
+}
+
+func (r *DatabaseReconciler) ensureServiceForCr(instance *githubcomv1alpha1.Database) (bool, error) {
+	logger := log.Log.WithName("ensureServiceForCr")
+	logger.Info("Ensure Service Call")
+	service := newServiceForCr(instance)
+	logger.Info("Created service")
+	foundService := &v1.Service{}
+
+	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: service.Name}, foundService)
+	logger.Info("Finding service", "foundService", foundService, "err", err)
+	if err != nil && errors.IsNotFound(err) {
+		err = r.Client.Create(context.TODO(), service)
+		if err != nil {
+			return false, err
+		}
+	} else if err != nil {
+		return false, err
+	}
+
+	if service.Kind != foundService.Kind {
+		err = r.Client.Update(context.TODO(), service)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	return false, nil
+
+}
+
 func newPodForCR(cr *githubcomv1alpha1.Database) *v1.Pod {
 	labels := map[string]string{
 		"app": cr.Name,
@@ -137,8 +198,8 @@ func newPodForCR(cr *githubcomv1alpha1.Database) *v1.Pod {
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
-					Name:  "helloworld",
-					Image: "helloworld",
+					Name:  "document-service",
+					Image: cr.Spec.Image, //"bohunn/document-service",
 					VolumeMounts: []v1.VolumeMount{
 						{
 							Name:      volumeName,
