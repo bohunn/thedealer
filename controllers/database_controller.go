@@ -156,19 +156,19 @@ func newServiceForCr(cr *githubcomv1alpha1.Database) *v1.Service {
 
 func (r *DatabaseReconciler) ensureServiceForCr(instance *githubcomv1alpha1.Database) (bool, error) {
 	logger := log.Log.WithName("ensureServiceForCr")
-	logger.Info("Ensure Service Call")
+	logger.Info("Creating a Service for ", instance)
 	service := newServiceForCr(instance)
-	logger.Info("Created service")
+
 	foundService := &v1.Service{}
 
 	err := r.Client.Get(context.TODO(), types.NamespacedName{Name: service.Name}, foundService)
 	logger.Info("Finding service", "foundService", foundService, "err", err)
 	if err != nil && errors.IsNotFound(err) {
 		err = r.Client.Create(context.TODO(), service)
-		if err != nil {
-			return false, err
-		}
-	} else if err != nil {
+	} else if err != nil && errors.IsAlreadyExists(err) {
+		err = r.Client.Update(context.TODO(), service)
+	}
+	if err != nil {
 		return false, err
 	}
 
